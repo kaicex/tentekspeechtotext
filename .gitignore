@@ -1,0 +1,18 @@
+# Файлы с конфиденциальными данными
+.env
+config/.env
+
+# Виртуальное окружение
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Логи
+*.log
+
+# Локальные файлы IDE
+.idea/
+.vscode/
+*.swp
+*.swo
