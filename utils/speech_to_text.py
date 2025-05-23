@@ -3,7 +3,6 @@ import os
 import tempfile
 import httpx
 from elevenlabs.client import ElevenLabs
-from elevenlabs.error import ElevenLabsError
 import openai
 from config import ELEVENLABS_API_KEY, OPENAI_API_KEY
 
@@ -72,7 +71,7 @@ class SpeechToTextConverter:
             logging.info("Успешно распознано с помощью ElevenLabs API")
             return result.text
         
-        except ElevenLabsError as e:
+        except Exception as e:
             error_message = self._handle_elevenlabs_error(e)
             logging.error(f"ElevenLabs API ошибка: {e}")
             return error_message
