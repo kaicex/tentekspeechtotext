@@ -11,10 +11,19 @@ class SpeechToTextConverter:
     
     def __init__(self):
         """Инициализация клиентов API"""
-        self.elevenlabs_client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
-        self.openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
-        # По умолчанию используем Whisper, а ElevenLabs как запасной
-        self.use_whisper = True
+        self.elevenlabs_client = ElevenLabs(api_key=ELEVENLABS_API_KEY) if ELEVENLABS_API_KEY else None
+        self.openai_client = openai.OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+        
+        # Определяем, какой API использовать по умолчанию
+        if self.openai_client:
+            logging.info("Используем OpenAI Whisper API по умолчанию")
+            self.use_whisper = True
+        elif self.elevenlabs_client:
+            logging.info("Используем ElevenLabs API по умолчанию")
+            self.use_whisper = False
+        else:
+            logging.error("Не найдено ни одного действующего API ключа")
+            raise ValueError("Требуется хотя бы один API ключ: OPENAI_API_KEY или ELEVENLABS_API_KEY")
     
     async def convert_audio_to_text(self, audio_data, language="ru"):
         """
@@ -31,6 +40,12 @@ class SpeechToTextConverter:
     
     async def _convert_with_whisper(self, audio_data, language="ru"):
         """Использует OpenAI Whisper API для преобразования аудио в текст"""
+        if not self.openai_client:
+            logging.error("Отсутствует OpenAI API ключ")
+            if self.elevenlabs_client:
+                return await self._convert_with_elevenlabs(audio_data, language)
+            return "❌ Не настроен OpenAI API ключ. Добавьте OPENAI_API_KEY в настройки."
+            
         try:
             # Создаем временный файл для аудио
             with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as temp_file:
@@ -55,11 +70,19 @@ class SpeechToTextConverter:
         except Exception as e:
             logging.error(f"Ошибка при использовании Whisper API: {e}")
             # Если Whisper не работает, пробуем ElevenLabs
-            logging.info("Переключаемся на ElevenLabs API")
-            return await self._convert_with_elevenlabs(audio_data, language)
+            if self.elevenlabs_client:
+                logging.info("Переключаемся на ElevenLabs API")
+                return await self._convert_with_elevenlabs(audio_data, language)
+            return "❌ Ошибка Whisper API: " + str(e)
     
     async def _convert_with_elevenlabs(self, audio_data, language="ru"):
         """Использует ElevenLabs API для преобразования аудио в текст"""
+        if not self.elevenlabs_client:
+            logging.error("Отсутствует ElevenLabs API ключ")
+            if self.openai_client:
+                return await self._convert_with_whisper(audio_data, language)
+            return "❌ Не настроен ElevenLabs API ключ. Добавьте ELEVENLABS_API_KEY в настройки."
+            
         try:
             # Отправляем аудио на распознавание
             # Согласно документации ElevenLabs API, используем параметр 'file'
