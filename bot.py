@@ -7,7 +7,8 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand
-from dotenv import load_dotenv
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from aiohttp import web
 from handlers.audio_handler import router as audio_router
 from config import BOT_TOKEN, OPENAI_API_KEY, ELEVENLABS_API_KEY
 
@@ -74,8 +75,40 @@ async def main():
     
     # Запускаем бота в соответствующем режиме
     if WEBHOOK_MODE:
-        logging.info("Запуск в режиме вебхука не поддерживается в этой версии")
-        return
+        logging.info("Запуск в режиме вебхука")
+        
+        # Создаем веб-приложение
+        app = web.Application()
+        
+        # Добавляем маршрут для вебхука
+        webhook_path = WEBHOOK_PATH
+        
+        # Добавляем роут для проверки здоровья
+        async def health(request):
+            return web.Response(text="OK")
+        
+        app.router.add_get("/", health)
+        app.router.add_get("/health", health)
+        
+        # Настраиваем вебхук
+        SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=webhook_path)
+        setup_application(app, dp, bot=bot)
+        
+        # Запускаем веб-сервер
+        logging.info(f"Запуск веб-сервера на порту {PORT}")
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, host="0.0.0.0", port=PORT)
+        await site.start()
+        
+        # Удерживаем приложение запущенным
+        logging.info(f"Бот запущен в режиме вебхука на {WEBHOOK_URL}")
+        
+        # Бесконечный цикл для поддержания работы приложения
+        while True:
+            await asyncio.sleep(3600)  # Проверка каждый час
+            logging.info("Бот все еще работает...")
+    
     else:
         logging.info("Запуск в режиме Long Polling")
         await dp.start_polling(bot, skip_updates=True)
