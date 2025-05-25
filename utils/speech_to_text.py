@@ -11,8 +11,25 @@ class SpeechToTextConverter:
     
     def __init__(self):
         """Инициализация клиентов API"""
-        self.elevenlabs_client = ElevenLabs(api_key=ELEVENLABS_API_KEY) if ELEVENLABS_API_KEY else None
-        self.openai_client = openai.OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+        # Логируем наличие ключей
+        if ELEVENLABS_API_KEY:
+            logging.info(f"Найден ключ ElevenLabs API: {ELEVENLABS_API_KEY[:5]}...{ELEVENLABS_API_KEY[-5:]}")
+            self.elevenlabs_client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
+        else:
+            logging.warning("Ключ ElevenLabs API не найден")
+            self.elevenlabs_client = None
+            
+        if OPENAI_API_KEY:
+            logging.info(f"Найден ключ OpenAI API: {OPENAI_API_KEY[:5]}...{OPENAI_API_KEY[-5:]} (длина: {len(OPENAI_API_KEY)})")
+            try:
+                self.openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
+                logging.info("Клиент OpenAI успешно создан")
+            except Exception as e:
+                logging.error(f"Ошибка при создании клиента OpenAI: {e}")
+                self.openai_client = None
+        else:
+            logging.warning("Ключ OpenAI API не найден")
+            self.openai_client = None
         
         # Определяем, какой API использовать по умолчанию
         if self.openai_client:
